@@ -1,0 +1,21 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Generated data (rebuild with ingest.py / index.py)
+index/*
+!index/.gitkeep
+
+# Papers: PDFs can be large and some licences forbid redistribution.
+# papers.csv is committed so others know which papers to download.
+data/papers/*.pdf
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
