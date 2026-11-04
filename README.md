@@ -52,13 +52,31 @@ for hit in idx.search("Label noise reduces detection accuracy.", k=5):
 
 If you re-run `src.ingest`, run `src.index build` again; loading a stale index stops with a message saying so.
 
+## Day 3: from paragraph to evidence
+
+```bash
+python -m src.retrieve "Faster R-CNN is fairly robust to missing annotations. Noisy boxes hurt accuracy (Zhou et al., 2023)."
+python -m src.retrieve --file paragraph.txt
+python -m src.retrieve --compare "..."      # embeddings only vs with re-ranking
+python -m src.retrieve --no-rerank "..."    # embeddings only
+```
+
+For each claim (one per sentence; citation markers such as `[3]` or `(Wu et al., 2018)` are removed before searching):
+
+1. take the top 10 candidates from the FAISS index;
+2. drop candidates with cosine similarity below **0.40**, so a claim with nothing relevant gets *"No evidence found"* instead of a weak match;
+3. re-rank the rest with the cross-encoder [ms-marco-MiniLM-L-6-v2](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2), which reads claim and sentence together (downloaded once, ~90 MB);
+4. keep at most 2 sentences per paper and return the best 3.
+
+All of these are options: `--threshold`, `--candidates`, `--top-k`, `--max-per-paper` (0 = no limit).
+
 ## Tests
 
 ```bash
 python -m pytest -q
 ```
 
-`tests/test_ingest.py` builds a deliberately messy two-column PDF and checks each cleaning rule. `tests/test_index.py` checks building, saving, reloading and ranking, using a small word-count encoder in place of MiniLM so the tests run offline in about a second.
+`tests/test_ingest.py` builds a deliberately messy two-column PDF and checks each cleaning rule. `tests/test_index.py` checks building, saving, reloading and ranking, using a small word-count encoder in place of MiniLM so the tests run offline in about a second. `tests/test_claims.py` and `tests/test_retrieve.py` cover claim splitting, citation stripping, the threshold, re-ranking and the per-paper cap.
 
 ## Project structure
 
@@ -72,8 +90,8 @@ citeassist/
 ├── src/
 │   ├── ingest.py          # read PDFs, split into sentences
 │   ├── index.py           # embed sentences, build/load FAISS index, search
-│   ├── claims.py          # day 3
-│   ├── retrieve.py        # day 3
+│   ├── claims.py          # split a paragraph into claims
+│   ├── retrieve.py        # threshold, re-ranking, per-paper cap
 │   ├── judge.py           # day 4
 │   └── cite.py            # day 4
 ├── evaluate.py            # day 6

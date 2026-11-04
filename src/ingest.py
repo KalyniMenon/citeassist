@@ -63,6 +63,16 @@ WHITESPACE = re.compile(r"\s+")
 # no full stop at the end. e.g. "1. Introduction", "3.2 Box jitter", "Abstract".
 HEADING = re.compile(r"^\s*(?:\d+(?:\.\d+)*\.?|[IVX]+\.)?\s*[A-Z][\w\-:&,' ]*$")
 MAX_HEADING_WORDS = 6
+# A common section name printed on the same line as the text that follows it,
+# e.g. "Conclusion We evaluated ..." or "4 Discussion Our research ...".
+# Only stripped when the next word is capitalised, so "Results show that ..."
+# is left alone.
+INLINE_HEADING = re.compile(
+    r"^(?:\d+(?:\.\d+)*\.?\s+|[IVX]+\.\s+)?"
+    r"(?:Abstract|Introduction|Related Work|Background|Preliminaries|Method|Methods|Methodology"
+    r"|Approach|Experiments?|Experimental Setup|Results|Discussion|Conclusions?"
+    r"|Limitations|Future Work)\s*[:.\-—]?\s+(?=[A-Z])"
+)
 # Abbreviations that spaCy may wrongly treat as the end of a sentence.
 ABBREVIATIONS = ("fig.", "figs.", "eq.", "eqs.", "sec.", "tab.", "al.", "e.g.", "i.e.", "vs.", "cf.", "no.")
 # Marker that forces a sentence boundary where a heading used to be.
@@ -274,6 +284,7 @@ def split_sentences(
 
     kept, dropped, seen = [], 0, set()
     for start, text in raw:
+        text = INLINE_HEADING.sub("", text, count=1)
         if not is_good_sentence(text, min_words, max_words) or text in seen:
             dropped += 1
             continue

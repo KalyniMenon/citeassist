@@ -138,6 +138,15 @@ def test_junk_is_removed(table):
         assert junk not in text, junk
 
 
+def test_inline_headings_are_stripped():
+    from src.ingest import INLINE_HEADING
+    strip = lambda t: INLINE_HEADING.sub("", t, count=1)
+    assert strip("Conclusion We evaluated the robustness of detectors.") == "We evaluated the robustness of detectors."
+    assert strip("4 Discussion Our research revealed a gap.") == "Our research revealed a gap."
+    assert strip("Results show that accuracy drops.") == "Results show that accuracy drops."
+    assert strip("Methods such as ours are robust.") == "Methods such as ours are robust."
+
+
 def test_author_list_is_removed(table):
     assert "Richard Miles" not in _all_text(table)
 
