@@ -45,6 +45,18 @@ REFERENCES_HEADING = re.compile(
 ARXIV_STAMP = re.compile(r"arXiv:\d{4}\.\d{4,5}(v\d+)?", re.IGNORECASE)
 PAGE_NUMBER = re.compile(r"^\s*(page\s*)?\d{1,4}(\s*(of|/)\s*\d{1,4})?\s*$", re.IGNORECASE)
 URL_OR_EMAIL = re.compile(r"(https?://|www\.|\S+@\S+\.\w+)")
+# The acknowledgements section is skipped up to the next section heading.
+ACK_HEADING = re.compile(r"^\s*(?:\d+\.?\s*)?acknowledge?ments?\.?\s*$", re.IGNORECASE)
+# Backup for acknowledgements without their own heading line.
+THANKS = re.compile(
+    r"\b(we (would like to |wish to )?(thank|acknowledge)|grateful|gratitude"
+    r"|(this|the) (work|research|project) (was|is) (partially |partly |in part )?(supported|funded)"
+    r"|grant (no\.?|number))",
+    re.IGNORECASE,
+)
+# Words allowed in a list of names ("A, B, and C"); everything else lowercase counts as prose.
+NAME_LIST_WORDS = {"and", "&"}
+MIN_LOWERCASE_FRACTION = 0.25
 HYPHEN_BREAK = re.compile(r"(\w)-\n(\w)")  # "detec-\ntion" -> "detection"
 WHITESPACE = re.compile(r"\s+")
 # A section heading on its own line: optional number, a few capitalised words,
@@ -123,6 +135,7 @@ def extract_pages(pdf_path: Path) -> tuple[list[str], int | None]:
     page_texts: list[str] = []
     references_page = None
     min_ref_page = max(1, len(raw) // 3)  # ignore a "References" mention in the intro
+    in_acknowledgements = False  # carries across blocks and pages
     for page_no, (height, blocks) in enumerate(raw, start=1):
         kept = []
         for y0, y1, text in blocks:
@@ -138,10 +151,18 @@ def extract_pages(pdf_path: Path) -> tuple[list[str], int | None]:
                 if page_no > min_ref_page and REFERENCES_HEADING.match(stripped):
                     references_page = page_no
                     break
+                if ACK_HEADING.match(stripped):
+                    in_acknowledgements = True  # skip until the next section heading
+                    lines_out.append(SEGMENT_BREAK)
+                    prev = ""
+                    continue
                 next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""
                 if is_heading(stripped, prev, next_line):
+                    in_acknowledgements = False
                     lines_out.append(SEGMENT_BREAK)  # drop it, but end the sentence here
                     prev = ""  # a heading is a boundary, like the start of a block
+                elif in_acknowledgements:
+                    continue
                 else:
                     lines_out.append(line)
                     prev = stripped
@@ -191,6 +212,16 @@ def is_good_sentence(sentence: str, min_words: int, max_words: int) -> bool:
     if letters / max(len(sentence), 1) < 0.6:  # tables, equations, numbers
         return False
     if URL_OR_EMAIL.search(sentence):  # affiliations, footnote links
+        return False
+    if THANKS.search(sentence):  # acknowledgements and funding notes
+        return False
+    # Author lists and titles are almost all capitalised words and have no
+    # full stop. Real sentences can be name-heavy ("We evaluate Faster R-CNN,
+    # RetinaNet and FCOS on PASCAL VOC.") but still end like a sentence.
+    lowercase = sum(w[:1].islower() and w not in NAME_LIST_WORDS for w in words)
+    fraction = lowercase / len(words)
+    ends_like_sentence = sentence.rstrip()[-1:] in ".?!"
+    if fraction < MIN_LOWERCASE_FRACTION / 2.5 or (fraction < MIN_LOWERCASE_FRACTION and not ends_like_sentence):
         return False
     if not sentence[0].isalnum() and sentence[0] not in "\"'(“":  # fragments
         return False

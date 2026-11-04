@@ -27,13 +27,38 @@ This writes `index/sentences.csv` (one row per clean sentence: `sentence_id`, `p
 
 What the cleaning does: removes running headers/footers, page numbers, arXiv stamps, emails/URLs, tables and the reference list; fixes hyphenated line breaks; stops section headings merging into sentences; keeps sentences that cross a page break whole (tagged with the page they start on).
 
+## Day 2: build the search index
+
+```bash
+python -m src.index build
+```
+
+This embeds every sentence in `index/sentences.csv` with [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) (downloaded once, ~90 MB) and saves a FAISS `IndexFlatIP` index to `index/faiss.index`. Vectors are normalised, so each score is the cosine similarity between the claim and a sentence.
+
+Search from the terminal:
+
+```bash
+python -m src.index search "Missing annotations have a mild effect on detector accuracy." -k 5
+```
+
+Or from Python:
+
+```python
+from src.index import EvidenceIndex
+idx = EvidenceIndex.load()          # loads from disk, no re-embedding
+for hit in idx.search("Label noise reduces detection accuracy.", k=5):
+    print(hit.score, hit.paper_id, hit.page, hit.sentence)
+```
+
+If you re-run `src.ingest`, run `src.index build` again; loading a stale index stops with a message saying so.
+
 ## Tests
 
 ```bash
 python -m pytest -q
 ```
 
-`tests/test_ingest.py` builds a deliberately messy two-column PDF and checks each cleaning rule.
+`tests/test_ingest.py` builds a deliberately messy two-column PDF and checks each cleaning rule. `tests/test_index.py` checks building, saving, reloading and ranking, using a small word-count encoder in place of MiniLM so the tests run offline in about a second.
 
 ## Project structure
 
@@ -46,7 +71,7 @@ citeassist/
 ├── index/                 # saved FAISS index + sentence table (generated)
 ├── src/
 │   ├── ingest.py          # read PDFs, split into sentences
-│   ├── index.py           # day 2
+│   ├── index.py           # embed sentences, build/load FAISS index, search
 │   ├── claims.py          # day 3
 │   ├── retrieve.py        # day 3
 │   ├── judge.py           # day 4

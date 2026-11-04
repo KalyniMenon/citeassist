@@ -35,7 +35,9 @@ def build_messy_pdf(path):
 
     page(
         "\n".join([
-            "Label Noise in Object Detection", "", "Jane Doe, John Roe", "University of Somewhere",
+            "Label Noise in Object Detection", "",
+            "Jane Doe*1, John Roe*1, Mary Major2, Richard Miles2, Alex Smith1, and Kim Lee2",
+            "University of Somewhere",
             "jane.doe@example.edu", "", "Abstract",
             "Detectors trained with noisy bounding boxes showed a substantial drop in mAP compared with detec-",
             "tors trained on clean annotations. We study how missing annotations, class flips and box jitter",
@@ -70,6 +72,11 @@ def build_messy_pdf(path):
         "\n".join([
             "4. Conclusion",
             _para("Localization noise is far more harmful than missing labels for two-stage detectors in our experiments."),
+            "Acknowledgements",
+            _para("We would like to express our gratitude to the anonymous reviewers for their many helpful comments. "
+                  "Our lab members also gave useful feedback on early drafts of this paper."),
+            "5. Limitations",
+            _para("Our study only covers two-stage detectors evaluated on two public benchmark datasets."),
             "", "References",
             _para("[1] A. Author and B. Author. A paper about label noise in object detection that should not be indexed. In CVPR, 2019."),
         ]),
@@ -129,6 +136,17 @@ def test_junk_is_removed(table):
     text = _all_text(table)
     for junk in ("Workshop on Learning", "arXiv:2101", "example.edu", "71.2"):
         assert junk not in text, junk
+
+
+def test_author_list_is_removed(table):
+    assert "Richard Miles" not in _all_text(table)
+
+
+def test_acknowledgements_are_removed_but_next_section_is_kept(table):
+    text = _all_text(table)
+    assert "gratitude" not in text
+    assert "early drafts" not in text  # no "thank" words, removed only by the section skip
+    assert "Our study only covers two-stage detectors" in text
 
 
 def test_references_are_cut(table):
