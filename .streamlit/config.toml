@@ -1,0 +1,13 @@
+# Look and feel of the CiteAssist app (streamlit run app.py).
+[theme]
+base = "light"
+primaryColor = "#3557c9"          # calm blue: red is kept for "contradicts"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f3f5f9"
+textColor = "#1f2430"
+
+[client]
+toolbarMode = "minimal"          # hides the "Deploy" button
+
+[browser]
+gatherUsageStats = false

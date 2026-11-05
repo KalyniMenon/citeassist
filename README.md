@@ -92,13 +92,27 @@ Each claim then gets a verdict (*supported*, *contradicted*, *contested*, *relat
 
 **Limitations:** page numbers are PDF page numbers, which can differ from a journal's printed page numbers; titles are used as written in `papers.csv` (APA uses sentence case).
 
+## Day 5: the app
+
+```bash
+streamlit run app.py
+```
+
+Opens in your browser at http://localhost:8501. Paste a paragraph (or press **Try an example**) and press **Find evidence**. For each claim you get:
+
+- a verdict: *Supported*, *Contradicted*, *Contested*, *Only related evidence* or *No evidence found*;
+- each evidence sentence as a quote, with a coloured label (green = supports, red = contradicts, grey = related), the LLM's reason, the in-text citation and the similarity / re-rank scores;
+- an APA reference list for the papers used, with a plain-text copy and a **Download results (.md)** button.
+
+The sidebar lists the indexed papers and has settings: LLM labels on/off, re-ranking on/off and the minimum similarity. The index and models are loaded once (`st.cache_resource`), so only the first search is slow. If the LLM isn't set up or can't be reached, the app still shows the evidence and citations without labels.
+
 ## Tests
 
 ```bash
 python -m pytest -q
 ```
 
-`tests/test_ingest.py` builds a deliberately messy two-column PDF and checks each cleaning rule. `tests/test_index.py` checks building, saving, reloading and ranking, using a small word-count encoder in place of MiniLM so the tests run offline in about a second. `tests/test_claims.py` and `tests/test_retrieve.py` cover claim splitting, citation stripping, the threshold, re-ranking and the per-paper cap. `tests/test_judge.py` uses a fake LLM and faked HTTP responses to check JSON validation, retries, the fallback, caching and each provider's request format; `tests/test_cite.py` checks APA formatting; `tests/test_pipeline.py` runs the whole pipeline offline.
+`tests/test_ingest.py` builds a deliberately messy two-column PDF and checks each cleaning rule. `tests/test_index.py` checks building, saving, reloading and ranking, using a small word-count encoder in place of MiniLM so the tests run offline in about a second. `tests/test_claims.py` and `tests/test_retrieve.py` cover claim splitting, citation stripping, the threshold, re-ranking and the per-paper cap. `tests/test_judge.py` uses a fake LLM and faked HTTP responses to check JSON validation, retries, the fallback, caching and each provider's request format; `tests/test_cite.py` checks APA formatting; `tests/test_pipeline.py` runs the whole pipeline offline; `tests/test_app.py` drives the Streamlit app headlessly with Streamlit's `AppTest`.
 
 ## Project structure
 
@@ -118,5 +132,6 @@ citeassist/
 │   ├── cite.py            # APA references and in-text citations
 │   └── pipeline.py        # paragraph -> claims -> evidence -> labels -> citations
 ├── evaluate.py            # day 6
-└── app.py                 # day 5
+├── app.py                 # Streamlit app
+└── .streamlit/config.toml # app theme
 ```

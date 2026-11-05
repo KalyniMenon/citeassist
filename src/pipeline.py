@@ -112,7 +112,32 @@ class CiteAssist:
 # ---------------------------------------------------------------- CLI
 
 
-def print_checked(checked: list[CheckedClaim], papers_used: dict[str, Paper]) -> None:
+def papers_used(checked: list[CheckedClaim]) -> list[Paper]:
+    """Papers cited anywhere in the results, in APA reference-list order."""
+    found = {item.paper.paper_id: item.paper for c in checked for item in c.items}
+    return sorted(found.values(), key=lambda p: (p.authors[0][0].lower() if p.authors else "", p.year))
+
+
+def report_markdown(checked: list[CheckedClaim]) -> str:
+    """The results as a Markdown document (used by the app's download button)."""
+    lines = ["# CiteAssist results", ""]
+    for c in checked:
+        lines += [f"## Claim {c.claim.index}: {c.verdict}", "", f"> {c.claim.text}", ""]
+        if not c.found:
+            lines += ["No evidence found in the indexed papers.", ""]
+        for item in c.items:
+            label = item.label or "evidence"
+            lines.append(f'- **{label}** {item.citation}: "{item.evidence.sentence}"')
+            if item.judgement:
+                lines.append(f"  - Why: {item.judgement.reason}")
+        lines.append("")
+    refs = papers_used(checked)
+    if refs:
+        lines += ["## References", ""] + [reference(p, markdown=True) for p in refs]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def print_checked(checked: list[CheckedClaim]) -> None:
     for c in checked:
         print(f"\nClaim {c.claim.index} [{c.verdict.upper()}]: {c.claim.text}")
         if not c.found:
@@ -123,10 +148,10 @@ def print_checked(checked: list[CheckedClaim], papers_used: dict[str, Paper]) ->
             print(f'     "{item.evidence.sentence}"')
             if item.judgement:
                 print(f"     Why: {item.judgement.reason}")
-            papers_used[item.paper.paper_id] = item.paper
-    if papers_used:
+    refs = papers_used(checked)
+    if refs:
         print("\nReferences")
-        for paper in sorted(papers_used.values(), key=lambda p: (p.authors[0][0] if p.authors else "", p.year)):
+        for paper in refs:
             print(f"  {reference(paper)}")
 
 
@@ -155,7 +180,7 @@ def main() -> None:
         checked = assistant.check(paragraph)
     except LLMError as exc:
         sys.exit(f"LLM error: {exc}\nTip: run with --no-judge to see the evidence without labels.")
-    print_checked(checked, {})
+    print_checked(checked)
 
 
 if __name__ == "__main__":

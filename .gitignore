@@ -19,3 +19,6 @@ data/papers/*.pdf
 .DS_Store
 .vscode/
 .idea/
+
+# Streamlit secrets (config.toml is fine to commit)
+.streamlit/secrets.toml
