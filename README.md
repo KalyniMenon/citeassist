@@ -70,13 +70,35 @@ For each claim (one per sentence; citation markers such as `[3]` or `(Wu et al.,
 
 All of these are options: `--threshold`, `--candidates`, `--top-k`, `--max-per-paper` (0 = no limit).
 
+## Day 4: LLM judge and APA citations
+
+Set up the LLM once: copy `.env.example` to `.env` and add a key (Gemini by default; Groq or a local Ollama model also work, chosen with `LLM_PROVIDER`).
+
+```bash
+python -m src.pipeline "Faster R-CNN is fairly robust to missing annotations. Noisy boxes hurt accuracy."
+python -m src.pipeline --file paragraph.txt
+python -m src.pipeline --no-judge "..."     # evidence and citations only, no API calls
+```
+
+For each claim, the evidence sentences go to the LLM in **one** request. It labels each one **supports**, **contradicts** or **related**, with a one-line reason, as JSON:
+
+- temperature 0, so labels are repeatable;
+- the JSON is validated; a malformed reply is retried once, then falls back to *related* (never claims support that isn't there);
+- rate limits and server errors are retried with backoff (2 s, 4 s, 8 s, or the server's `Retry-After`);
+- the claim and sentences are passed as tagged data, and the prompt tells the model to ignore instructions inside them (text from PDFs is untrusted);
+- answers are cached in `index/judge_cache.json`, so re-running costs no API calls.
+
+Each claim then gets a verdict (*supported*, *contradicted*, *contested*, *related* or *no evidence*), each sentence an in-text citation such as `(Li et al., 2020, p. 5)`, and the output ends with an APA 7 reference list built from `data/papers.csv`. Optional `volume`, `issue` and `pages` columns are used for journal and proceedings entries.
+
+**Limitations:** page numbers are PDF page numbers, which can differ from a journal's printed page numbers; titles are used as written in `papers.csv` (APA uses sentence case).
+
 ## Tests
 
 ```bash
 python -m pytest -q
 ```
 
-`tests/test_ingest.py` builds a deliberately messy two-column PDF and checks each cleaning rule. `tests/test_index.py` checks building, saving, reloading and ranking, using a small word-count encoder in place of MiniLM so the tests run offline in about a second. `tests/test_claims.py` and `tests/test_retrieve.py` cover claim splitting, citation stripping, the threshold, re-ranking and the per-paper cap.
+`tests/test_ingest.py` builds a deliberately messy two-column PDF and checks each cleaning rule. `tests/test_index.py` checks building, saving, reloading and ranking, using a small word-count encoder in place of MiniLM so the tests run offline in about a second. `tests/test_claims.py` and `tests/test_retrieve.py` cover claim splitting, citation stripping, the threshold, re-ranking and the per-paper cap. `tests/test_judge.py` uses a fake LLM and faked HTTP responses to check JSON validation, retries, the fallback, caching and each provider's request format; `tests/test_cite.py` checks APA formatting; `tests/test_pipeline.py` runs the whole pipeline offline.
 
 ## Project structure
 
@@ -92,8 +114,9 @@ citeassist/
 │   ├── index.py           # embed sentences, build/load FAISS index, search
 │   ├── claims.py          # split a paragraph into claims
 │   ├── retrieve.py        # threshold, re-ranking, per-paper cap
-│   ├── judge.py           # day 4
-│   └── cite.py            # day 4
+│   ├── judge.py           # LLM: supports / contradicts / related
+│   ├── cite.py            # APA references and in-text citations
+│   └── pipeline.py        # paragraph -> claims -> evidence -> labels -> citations
 ├── evaluate.py            # day 6
 └── app.py                 # day 5
 ```
