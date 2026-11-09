@@ -162,3 +162,27 @@ def test_references_are_cut(table):
     assert "should not be indexed" not in _all_text(table)
     assert "Another reference entry" not in _all_text(table)
     assert table["page"].max() == 3  # the conclusion before "References" is kept
+
+
+@pytest.mark.parametrize("sentence, keep", [
+    ("We evaluate Faster R-CNN, RetinaNet and FCOS on PASCAL VOC and MS COCO.", True),
+    ("Fig. 2b shows a case where the bounding box does not fully encompass the apple.", True),
+    ('He said the results were "robust to noise."', True),
+    ("PASCAL VOC is a fully annotated dataset where popular object detectors such as Faster-RCNN", False),
+    ("Finally, we model the spatial distribution as a Gaussian which can be formulated as mu =", False),
+    ("Figure 1: The Mean Average Precision (mAP) for one WSOD detector under different missing rates.", False),
+    ("Table 2. Comparison results on PASCAL VOC with different mixtures of label noise and box noise.", False),
+])
+def test_fragments_and_captions_are_dropped(sentence, keep):
+    from src.ingest import is_good_sentence
+
+    assert is_good_sentence(sentence, 8, 80) is keep
+
+
+def test_numbered_subheadings_are_stripped():
+    from src.ingest import SUBHEADING
+
+    strip = lambda t: SUBHEADING.sub("", t, count=1)
+    assert strip("Experiments 4.1 Dataset We manually introduce noise.") == "We manually introduce noise."
+    assert strip("3.2 Implementation Details We train all models.") == "We train all models."
+    assert strip("4.1 Results show that noise hurts.") == "4.1 Results show that noise hurts."  # not a heading
