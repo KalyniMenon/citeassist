@@ -1,0 +1,29 @@
+# Runs the test suite on every push and pull request.
+# The tests are offline: no models are downloaded and no API key is needed.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # CPU-only PyTorch first: the default Linux wheel pulls in gigabytes of CUDA libraries.
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+          python -m spacy download en_core_web_sm
+
+      - name: Run tests
+        run: python -m pytest -q

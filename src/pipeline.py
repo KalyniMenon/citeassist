@@ -1,4 +1,4 @@
-"""Day 4: the full CiteAssist pipeline in one place.
+"""The full CiteAssist pipeline in one place.
 
     paragraph -> claims -> evidence (retrieve) -> labels (judge) -> citations (cite)
 
@@ -8,7 +8,7 @@ Run from the project root:
     python -m src.pipeline --no-judge "..."     # skip the LLM (no API calls)
     python -m src.pipeline --no-rerank "..."
 
-From Python (the app on day 5, the evaluation on day 6):
+From Python (used by app.py and evaluate.py):
     from src.pipeline import CiteAssist
     assistant = CiteAssist.load()
     for checked in assistant.check(paragraph):

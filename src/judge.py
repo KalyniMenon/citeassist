@@ -1,4 +1,4 @@
-"""Day 4: ask an LLM whether each evidence sentence supports a claim.
+"""Ask an LLM whether each evidence sentence supports a claim.
 
 For each claim, the evidence sentences from src.retrieve are sent to the LLM
 in ONE request (fewer requests = fewer rate-limit problems). The LLM returns
@@ -13,7 +13,7 @@ is retried once, and if it is still malformed the label falls back to
 "related" (the safe choice: it never claims support that isn't there).
 
 Answers are cached in index/judge_cache.json, so re-running the same
-paragraph, or the day 6 evaluation, costs no extra API calls.
+paragraph, or the evaluation (evaluate.py), costs no extra API calls.
 
 Choose the provider in .env (see .env.example):
     LLM_PROVIDER=gemini   (default; needs GEMINI_API_KEY)

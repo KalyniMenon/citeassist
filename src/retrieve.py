@@ -1,4 +1,4 @@
-"""Day 3: find the best evidence sentences for each claim in a paragraph.
+"""Find the best evidence sentences for each claim in a paragraph.
 
 For each claim:
   1. Get the top 10 candidate sentences from the FAISS index (src.index).
@@ -16,7 +16,7 @@ Run from the project root:
     python -m src.retrieve --no-rerank "..."          # embeddings only
     python -m src.retrieve --compare "..."            # with vs without re-ranking
 
-From Python (the app on day 5):
+From Python (used by app.py and evaluate.py):
     from src.retrieve import Retriever
     retriever = Retriever.load()
     for result in retriever.retrieve_paragraph(paragraph):
@@ -38,8 +38,11 @@ from src.index import DEFAULT_INDEX_DIR, EvidenceIndex, Hit
 
 RERANKER_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
-# Defaults. The threshold comes from the day 2 checks: real matches scored
-# 0.64-0.86, an unrelated claim 0.15. It is tuned properly on day 6.
+# Defaults. The 0.40 threshold was set from early checks (real matches scored
+# 0.64-0.86, an off-topic claim 0.15) and deliberately NOT re-tuned on the test
+# set. The evaluation shows recall@3 is flat from 0.30 to 0.55, and that on-topic
+# claims with no evidence score 0.58-0.73, so it is the LLM judge (labelling their
+# evidence 'related'), not the threshold, that handles them. See results/.
 CANDIDATES = 10
 TOP_K = 3
 THRESHOLD = 0.40
@@ -61,7 +64,7 @@ def load_reranker(name: str = RERANKER_NAME) -> Reranker:
         import torch
         from sentence_transformers import CrossEncoder  # slow import, so done lazily
 
-        # Return raw logits; _select() turns them into 0..1 scores with a
+        # Return raw logits; select() turns them into 0..1 scores with a
         # sigmoid, so the scale never depends on the model's own config.
         _RERANKER_CACHE[name] = CrossEncoder(name, device="cpu", activation_fn=torch.nn.Identity())
     return _RERANKER_CACHE[name]
@@ -122,13 +125,14 @@ class Retriever:
         if not claims:
             return []
         hit_lists = self.index.search_many([c.query for c in claims], k=self.candidates)
-        return [ClaimResult(c, self._select(c, hits)) for c, hits in zip(claims, hit_lists)]
+        return [ClaimResult(c, self.select(c, hits)) for c, hits in zip(claims, hit_lists)]
 
     def retrieve(self, claim_text: str) -> ClaimResult:
         """Retrieve evidence for one claim given as plain text."""
         return self.retrieve_claims([Claim(1, claim_text, claim_text)])[0]
 
-    def _select(self, claim: Claim, hits: list[Hit]) -> list[Evidence]:
+    def select(self, claim: Claim, hits: list[Hit]) -> list[Evidence]:
+        """Apply threshold, re-ranking and per-paper cap to candidate hits (steps 2-4)."""
         # Step 2: the threshold uses the embedding similarity, which is
         # comparable across claims; it decides IF there is evidence.
         hits = [h for h in hits if h.score >= self.threshold]

@@ -1,4 +1,4 @@
-"""Day 1: read research-paper PDFs and turn them into a clean sentence table.
+"""Read research-paper PDFs and turn them into a clean sentence table.
 
 Pipeline for each PDF listed in data/papers.csv:
   1. Extract text blocks page by page with PyMuPDF.
@@ -67,12 +67,27 @@ MAX_HEADING_WORDS = 6
 # e.g. "Conclusion We evaluated ..." or "4 Discussion Our research ...".
 # Only stripped when the next word is capitalised, so "Results show that ..."
 # is left alone.
-INLINE_HEADING = re.compile(
-    r"^(?:\d+(?:\.\d+)*\.?\s+|[IVX]+\.\s+)?"
+SECTION_NAMES = (
     r"(?:Abstract|Introduction|Related Work|Background|Preliminaries|Method|Methods|Methodology"
     r"|Approach|Experiments?|Experimental Setup|Results|Discussion|Conclusions?"
-    r"|Limitations|Future Work)\s*[:.\-—]?\s+(?=[A-Z])"
+    r"|Limitations|Future Work)"
 )
+INLINE_HEADING = re.compile(
+    r"^(?:\d+(?:\.\d+)*\.?\s+|[IVX]+\.\s+)?" + SECTION_NAMES + r"\s*[:.\-—]?\s+(?=[A-Z])"
+)
+# A numbered sub-heading stuck to its text, e.g. "Experiments 4.1 Dataset We manually ..."
+# or "3.2 Implementation Details We train ...": the number must have a dot (4.1),
+# and the heading is 1-4 capitalised words before a word that typically starts a sentence.
+SENTENCE_STARTERS = (
+    r"(?:We|Our|In|The|This|These|To|For|As|A|An|It|Here|First|Next|Finally|Following"
+    r"|Unlike|Since|Given|Each|All|Table|Figure|Fig)\b"
+)
+SUBHEADING = re.compile(
+    r"^(?:" + SECTION_NAMES + r"\s+)?\d+(?:\.\d+)+\.?\s+(?:[A-Z][\w\-]*\s+){1,4}?(?=" + SENTENCE_STARTERS + ")"
+)
+# Figure and table captions: "Figure 1: The mean ...", "Table 2. Results on ...".
+CAPTION = re.compile(r"^(?:Figure|Fig\.?|Table|Tab\.)\s*\d+[a-z]?\s*[:.|]", re.IGNORECASE)
+CLOSING = "\"'”’)]"
 # Abbreviations that spaCy may wrongly treat as the end of a sentence.
 ABBREVIATIONS = ("fig.", "figs.", "eq.", "eqs.", "sec.", "tab.", "al.", "e.g.", "i.e.", "vs.", "cf.", "no.")
 # Marker that forces a sentence boundary where a heading used to be.
@@ -228,10 +243,15 @@ def is_good_sentence(sentence: str, min_words: int, max_words: int) -> bool:
     # Author lists and titles are almost all capitalised words and have no
     # full stop. Real sentences can be name-heavy ("We evaluate Faster R-CNN,
     # RetinaNet and FCOS on PASCAL VOC.") but still end like a sentence.
+    # (Lists and titles without a full stop are also caught by the ending check below.)
     lowercase = sum(w[:1].islower() and w not in NAME_LIST_WORDS for w in words)
-    fraction = lowercase / len(words)
-    ends_like_sentence = sentence.rstrip()[-1:] in ".?!"
-    if fraction < MIN_LOWERCASE_FRACTION / 2.5 or (fraction < MIN_LOWERCASE_FRACTION and not ends_like_sentence):
+    if lowercase / len(words) < MIN_LOWERCASE_FRACTION / 2.5:
+        return False
+    # Fragments cut off by the page layout ("... such as Faster-RCNN",
+    # "... formulated as μi =") don't end like a sentence.
+    if sentence.rstrip().rstrip(CLOSING)[-1:] not in ".?!":
+        return False
+    if CAPTION.match(sentence):  # figure and table captions
         return False
     if not sentence[0].isalnum() and sentence[0] not in "\"'(“":  # fragments
         return False
@@ -284,6 +304,7 @@ def split_sentences(
 
     kept, dropped, seen = [], 0, set()
     for start, text in raw:
+        text = SUBHEADING.sub("", text, count=1)
         text = INLINE_HEADING.sub("", text, count=1)
         if not is_good_sentence(text, min_words, max_words) or text in seen:
             dropped += 1

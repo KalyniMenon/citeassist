@@ -1,4 +1,4 @@
-"""Day 3: split a user's paragraph into individual claims.
+"""Split a user's paragraph into individual claims.
 
 Each sentence of the paragraph is one claim. For searching, citation markers
 the writer already added ("[12]", "(Wu et al., 2018)") are removed, because

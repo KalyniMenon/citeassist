@@ -1,4 +1,4 @@
-"""Day 6: measure how well CiteAssist works on a labelled test set.
+"""Measure how well CiteAssist works on a labelled test set.
 
 Three commands, run from the project root:
 
@@ -181,7 +181,7 @@ def make_template(index_dir: Path, out: Path, n: int, n_none: int, seed: int) ->
     pd.DataFrame(rows, columns=COLUMNS).to_csv(out, index=False, encoding="utf-8-sig")  # BOM: Excel-friendly
     print(f"Wrote {len(rows)} rows ({len(picks)} sampled sentences from {len(papers)} papers, "
           f"{n_none} 'none' rows) to {out}")
-    print("Next: write a claim for each row (see README, day 6), delete rows you don't want, "
+    print("Next: write a claim for each row (see README, 'Evaluation'), delete rows you don't want, "
           f"and save it as {TEST_FILE.relative_to(ROOT)}.")
 
 

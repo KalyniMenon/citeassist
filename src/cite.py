@@ -1,4 +1,4 @@
-"""Day 4: APA 7 citations from data/papers.csv.
+"""APA 7 citations from data/papers.csv.
 
     from src.cite import load_papers, in_text, reference
     papers = load_papers()

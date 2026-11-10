@@ -1,4 +1,4 @@
-"""Day 2: embed every sentence and build a FAISS search index.
+"""Embed every sentence and build a FAISS search index.
 
 Build (after running src.ingest):
     python -m src.index build
@@ -7,7 +7,7 @@ Search from the terminal:
     python -m src.index search "Label noise reduces detector accuracy." -k 5
     python -m src.index search "claim one" "claim two"
 
-Use from Python (day 3 onwards):
+Use from Python:
     from src.index import EvidenceIndex
     idx = EvidenceIndex.load()
     hits = idx.search("Missing annotations hurt recall.", k=5)

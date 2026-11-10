@@ -1,4 +1,4 @@
-"""Day 5: the CiteAssist web app.
+"""The CiteAssist web app.
 
 Run from the project root:
     streamlit run app.py
@@ -187,8 +187,8 @@ def main() -> None:
     st.text_area("Your paragraph", key="paragraph", height=180,
                  placeholder="e.g. Label noise reduces the accuracy of object detection models. ...")
     left, right = st.columns([1, 1])
-    run = left.button("Find evidence", type="primary", icon=":material/search:", use_container_width=True)
-    right.button("Try an example", on_click=fill_example, use_container_width=True)
+    run = left.button("Find evidence", type="primary", icon=":material/search:", width="stretch")
+    right.button("Try an example", on_click=fill_example, width="stretch")
 
     if run:
         paragraph = st.session_state.paragraph.strip()

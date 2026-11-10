@@ -2,7 +2,7 @@
 
 They use a tiny bag-of-words encoder instead of the real MiniLM model, so they
 run offline in about a second. The real model is checked by hand with
-`python -m src.index search ...` (see README, day 2).
+`python -m src.index search ...` (see README).
 
 Run: python -m pytest -q
 """
